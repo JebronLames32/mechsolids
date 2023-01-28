@@ -11,6 +11,7 @@ class PointLoad:
 
 ##Considering only linearly distributed load
 class DistributedLoad:
+    #can enter either slope of the load or the start and end loads
     def __init__(self, start, end, startLoad=None, endLoad=None, slope=None):
 
         self.startLoad = startLoad
@@ -28,7 +29,7 @@ class DistributedLoad:
 
     #Calculate the load at point x
     def Value_of_load(self, x):
-        return self.slope * (x - self.start) / (self.end - self.start)
+        return self.slope * (x - self.start) + self.startLoad
 
     #Calculate the area under the distributed load up until point x
     def Area_under_load(self, x=None):
@@ -36,7 +37,7 @@ class DistributedLoad:
         if x is None:
             x = self.end
         #Area under the trapezoid or triangle
-        return (self.startLoad + self.endLoad) * (x - self.start) / 2
+        return (self.startLoad + self.Value_of_load(x)) * (x - self.start) / 2
 
     #Calculate the equivalent point load of the distributed load up until point x
     def Equivalent_point_load(self, x=None):
@@ -101,5 +102,5 @@ class Support:
 # load_list = [DistributedLoad(0, 3, 0, 4), DistributedLoad(3, 6, 4, 4)]
 # support = Support(0,3)
 # (support.Reaction_at_support(load_list))
-# print(support.reaction1)
+# print(support.reaction1, support.reaction2)
         
