@@ -64,6 +64,27 @@ class SimplySupportedBeam():
     def find_equation_of_bmd(self):
         pass
 
+    def get_important_points(self):
+        important_points_x = []
+        for load in self.load:
+            if(isinstance(load, PointLoad)):
+                important_points_x.append(load.dist)
+            elif(isinstance(load, DistributedLoad)):
+                important_points_x.append(load.start)
+                important_points_x.append(load.end)
+        important_points_x.append(self.supports.position1)
+        if(self.supports.position2 != None):
+            important_points_x.append(self.supports.position2)
+        #remove duplicates from the list
+        important_points_x = list(dict.fromkeys(important_points_x))
+        important_points_x.sort()
+        
+        important_points_y = []
+        for x in important_points_x:
+            important_points_y.append(self.generate_function_list_of_sfd(x))
+
+        return important_points_x, important_points_y
+
     def plot_sfd(self):
         rcParams['font.size']=16
         rcParams['mathtext.fontset']='cm'
@@ -84,8 +105,20 @@ class SimplySupportedBeam():
         ax1.axhline(y=0,color='k')
         ax1.axvline(x=0,color='k')
         ax1.fill_between(x,V,color='blue',alpha=0.2)
-        ax1.set_yticks([0, -4, -10, 12], minor=False)
-        ax1.set_xticks([3,6], minor=False)
+
+        #make a list of important points
+        important_points_x, important_points_y = self.get_important_points()
+
+        #find the discontinuous points so that we can make ticks for both points
+        pos = np.where(np.abs(np.diff(V)) >= 0.1)[0]
+        x_discontinuous = x[pos+1] - np.finfo(np.float32).eps
+        y_discontinuous = self.generate_function_list_of_sfd(x_discontinuous)
+        important_points_y = np.append(important_points_y, y_discontinuous)
+
+        ax1.set_yticks(important_points_y, minor=False)
+        ax1.set_xticks(important_points_x, minor=False)
+        
+        
         ax1.grid(True)
         plt.show()
 
