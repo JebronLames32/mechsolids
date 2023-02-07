@@ -37,7 +37,7 @@ def createUI():
     support=Support(position1, position2)
     return name, L, load_list, support
 
-#using the function createUI to create a UI for the user to input the data
+# using the function createUI to create a UI for the user to input the data
 name, L, load_list, support = createUI()
 Beam1 = SimplySupportedBeam(name, L)
 for load in load_list :

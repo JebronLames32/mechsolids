@@ -91,6 +91,8 @@ class Support:
         if(self.position2 is not None):
             self.reaction1 = Moment_at_point(self.position2, load_list) / (self.position1 - self.position2)
             self.reaction2 = Moment_at_point(self.position1, load_list) / (self.position2 - self.position1)
+            # self.reaction1 = abs(self.reaction1)
+            # self.reaction2 = abs(self.reaction2)
 
         #Case of cantilever beam
 
@@ -100,7 +102,11 @@ class Support:
 
 ##testing the functions
 # load_list = [DistributedLoad(0, 3, 0, 4), DistributedLoad(3, 6, 4, 4)]
+# load_list = [PointLoad(3, 3), PointLoad(6, 6)]
 # support = Support(0,3)
 # (support.Reaction_at_support(load_list))
 # print(support.reaction1, support.reaction2)
+
+# negative support reaction is possible only for pinned support and not for roller support. 
+# Hence, it might be better to use absolute value of the support reaction.
         
