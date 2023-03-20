@@ -47,7 +47,10 @@ class DistributedLoad:
         magnitude = self.Area_under_load(x)
 
         #Calculate the distance from the start of the distributed load to the equivalent point load (center of mass)
-        Xcom = (1/3 * self.startLoad + 2/3 * self.endLoad) * (self.end-self.start) / (self.endLoad + self.startLoad)
+        if(self.startLoad == self.Value_of_load(x)):
+            Xcom = (x - self.start) / 2
+        else:
+            Xcom = (1/3 * self.startLoad + 2/3 * self.Value_of_load(x)) * (x-self.start) / (self.Value_of_load(x) + self.startLoad)
 
         distance = self.start + Xcom
 

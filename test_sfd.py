@@ -44,3 +44,4 @@ for load in load_list :
     Beam1.add_load(load)
 Beam1.add_supports(support)
 Beam1.plot_sfd()
+Beam1.plot_bmd()
