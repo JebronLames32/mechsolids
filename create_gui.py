@@ -3,6 +3,13 @@
 import PySimpleGUI as sg
 from SimplySupportedBeam import *
 from math_functions import *
+import cv2
+from tkinter import *
+from sympy.physics.continuum_mechanics.beam import Beam
+from sympy import symbols
+from PIL import ImageTk, Image
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+sg.set_options(font=('Helvetica', 20))
 
 attribute_list = ["Beam-name", "Beam-length", "Number-of-loads"]
 attribute_values = ["" for i in range(len(attribute_list))]
@@ -84,6 +91,11 @@ layout = [
 
 window = sg.Window("Create Beam", layout)
 
+
+
+
+
+
 # Run the Event Loop
 while True:
     event, values = window.read()
@@ -106,6 +118,32 @@ while True:
         name = attribute_values[attribute_list.index("Beam-name")]
         n = int(attribute_values[attribute_list.index("Number-of-loads")] )
         L = float(attribute_values[attribute_list.index("Beam-length")] )
+        
+
+        
+        E, I = symbols('E, I')
+        b = Beam(L, E, I)
+
+        p = b.draw(pictorial=False) 
+        # p.save("beam.png")
+        
+
+        # root = Toplevel()
+        # root.geometry("800x800")
+
+        # bar1 = FigureCanvasTkAgg(p, root)
+        # bar1.get_tk_widget().pack(side=LEFT, fill=BOTH)  
+           
+        # frame = Frame(root, width=600, height=400)
+        # frame.pack()
+        # insert image into window
+        # img = ImageTk.PhotoImage(Image.open("beam.png"))
+        # label = Label(frame, image=img)
+        # label.pack()
+
+        # horizontal = Scale(root, from_=0, to=L, orient=HORIZONTAL, length=300, tickinterval=1, resolution=0.01)
+        # horizontal.pack()
+        
 
         window2 = create_loads(int(attribute_values[attribute_list.index("Number-of-loads")]))
         while True:

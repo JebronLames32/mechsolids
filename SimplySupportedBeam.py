@@ -54,6 +54,15 @@ class SimplySupportedBeam():
                 elif(x > load.end):
                     sfd -= load.Area_under_load()
 
+            elif(isinstance(load,EquationLoad)):
+                val = x - load.start
+                area = load.Integral_of_eqn(load.equation)
+                if(x >= load.start and x<=load.end):
+                    # print("area",area.subs(Symbol('x'), val))
+                    sfd -= area.subs(Symbol('x'), val)
+                elif(x > load.end):
+                    sfd -= area.subs(Symbol('x'), load.end-load.start)
+
         support = self.supports
         if(isinstance(support, Support)):
             if(x >= support.position1):
@@ -61,6 +70,7 @@ class SimplySupportedBeam():
             if(x >= support.position2):
                 sfd += support.reaction2
         
+        # print(sfd)
         return sfd
         
 
@@ -78,7 +88,7 @@ class SimplySupportedBeam():
         V (list): A list of 1001 values of shear force for each value of x.
         """
         # sfd = []
-        N = 1001
+        N = 2001
         x = np.linspace(0,self.length,N)
 
         # need to run the function for the support reactions as we need it already calculated in the next function.
@@ -118,6 +128,16 @@ class SimplySupportedBeam():
                 elif(x > load.end):
                     Equiv_point_load_mag, Equiv_point_load_dist = load.Equivalent_point_load()
                     bmd -= Equiv_point_load_mag * (x - Equiv_point_load_dist)
+
+            elif(isinstance(load,EquationLoad)):
+                val = x - load.start
+                V = load.Integral_of_eqn(load.equation)
+                M = V.Integral_of_eqn(V)
+                if(x >= load.start and x<=load.end):
+                    bmd -= M.subs(x, val)
+                elif(x > load.end):
+                    bmd -= M.subs(x, load.end-load.start)
+
 
         support = self.supports
         if(isinstance(support, Support)):
@@ -173,27 +193,33 @@ class SimplySupportedBeam():
             elif(isinstance(load, DistributedLoad)):
                 important_points_x.append(load.start)
                 important_points_x.append(load.end)
+            elif(isinstance(load, EquationLoad)):
+                important_points_x.append(load.start)
+                important_points_x.append(load.end)
+
         important_points_x.append(self.supports.position1)
         if(self.supports.position2 != None):
             important_points_x.append(self.supports.position2)
         #remove duplicates from the list
         important_points_x = list(dict.fromkeys(important_points_x))
+        # print(important_points_x)
         
 
         #find the discontinuous points so that we can make ticks for both points.
         # np.diff returns the difference between the adjacent elements in the array.
         # np.where returns the indices of the elements in the array that satisfy the condition.
         # we are subtracting a small valut epsilon from the x value of the discontinuous point so that we can plot the ticks on both sides of the discontinuity.
-        pos = np.where(np.abs(np.diff(V)) >= 0.1)
-        for i in pos:
-            x_discontinuous = x[i+1] - np.finfo(np.float32).eps
-            important_points_x = np.append(important_points_x, x_discontinuous)
+        # pos = np.where(np.abs(np.diff(V)) >= 0.1)
+        # for i in pos:
+        #     x_discontinuous = x[i+1] - np.finfo(np.float32).eps
+        #     important_points_x = np.append(important_points_x, x_discontinuous)
         
         important_points_x.sort()
         
         important_points_y = []
         for x in important_points_x:
             important_points_y.append(self.generate_sf_at_point(x))
+            # print(self.generate_sf_at_point(x))
 
         return important_points_x, important_points_y
 
@@ -212,6 +238,8 @@ class SimplySupportedBeam():
 
         x, V = self.generate_sf_at_all_points()
         V = np.array(V, dtype=float)
+        print("done till here")
+        # print(V)
 
         #fig, axes = plt.subplots(1,2,tight_layout=True)
 
@@ -228,7 +256,9 @@ class SimplySupportedBeam():
 
         #make a list of important points
         important_points_x, important_points_y = self.get_important_points(x, V)
-
+        # print(V[-2])
+        important_points_y.append(V[-2])
+        important_points_y = np.array(important_points_y, dtype=float)
         
         ax1.set_yticks(important_points_y, minor=False)
         ax1.set_xticks(important_points_x, minor=False)
@@ -277,13 +307,14 @@ class SimplySupportedBeam():
         ax2.grid(True)
         plt.show()
 
-#test the functions
+# test the functions
 # Beam1 = SimplySupportedBeam("Beam1", 6)
 # Beam1.add_load(DistributedLoad(0, 3, 0, 4))
 # Beam1.add_load(DistributedLoad(3, 6, 4, 4))
 # Beam1.add_supports(Support(0,3))
-# Beam1.plot_sfd()
+
 # Beam1.plot_bmd()
+# Beam1.plot_sfd()
         
         
 
