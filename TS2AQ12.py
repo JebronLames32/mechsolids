@@ -16,8 +16,8 @@ Beam1.add_supports(support)
 Beam1.generate_sf_at_all_points()
 # print(Beam1.supports[0].reaction1)
 
-Beam1.plot_sfd()
-# Beam1.plot_bmd()
+# Beam1.plot_sfd()
+Beam1.plot_bmd()
 
 
 

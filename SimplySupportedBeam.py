@@ -121,7 +121,7 @@ class SimplySupportedBeam():
                 if(x>=load.dist):
                     bmd -= load.load * (x - load.dist)
                 
-            elif(isinstance(load, DistributedLoad)):
+            elif(isinstance(load, DistributedLoad) or isinstance(load, EquationLoad)):
                 if(x >= load.start and x<=load.end):
                     Equiv_point_load_mag, Equiv_point_load_dist = load.Equivalent_point_load(x)
                     bmd -= Equiv_point_load_mag * (x - Equiv_point_load_dist)
@@ -129,14 +129,14 @@ class SimplySupportedBeam():
                     Equiv_point_load_mag, Equiv_point_load_dist = load.Equivalent_point_load()
                     bmd -= Equiv_point_load_mag * (x - Equiv_point_load_dist)
 
-            elif(isinstance(load,EquationLoad)):
-                val = x - load.start
-                V = load.Integral_of_eqn(load.equation)
-                M = V.Integral_of_eqn(V)
-                if(x >= load.start and x<=load.end):
-                    bmd -= M.subs(x, val)
-                elif(x > load.end):
-                    bmd -= M.subs(x, load.end-load.start)
+            # elif(isinstance(load,EquationLoad)):
+            #     val = x - load.start
+            #     V = load.Integral_of_eqn(load.equation, load.start, x)
+            #     M = V.Integral_of_eqn(V)
+            #     if(x >= load.start and x<=load.end):
+            #         bmd -= M.subs(x, val)
+            #     elif(x > load.end):
+            #         bmd -= M.subs(x, load.end-load.start)
 
 
         support = self.supports
@@ -302,8 +302,32 @@ class SimplySupportedBeam():
         ax2.axhline(y=0,color='k')
         ax2.axvline(x=0,color='k')
         ax2.fill_between(x,M,color='blue',alpha=0.2)
-        ax2.set_yticks([0,-18], minor=False)
-        ax2.set_xticks([3,6], minor=False)
+
+        #make a list of important points
+        # important_points_x, important_points_y = self.get_important_points(x, M)
+        # print(V[-2])
+        # important_points_y.append(M[-2])
+        # important_points_y = np.array(important_points_y, dtype=float)
+        
+        # replace the nan values with 0
+        M = np.nan_to_num(M)
+
+        max = np.max(M)
+        print(max)
+        # min = np.min(M)
+        maxindex = np.array(M).argmax()
+        # minindex = np.array(M).argmin()
+
+        important_points_x = [x[maxindex]]
+        important_points_y = [max]
+        important_points_x = np.array(important_points_x, dtype=float)
+        important_points_y = np.array(important_points_y, dtype=float)
+        
+        ax2.set_yticks(important_points_y, minor=False)
+        ax2.set_xticks(important_points_x, minor=False)
+
+        # ax2.set_yticks([0,-18], minor=False)
+        # ax2.set_xticks([3,6], minor=False)
         ax2.grid(True)
         plt.show()
 
