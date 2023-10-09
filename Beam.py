@@ -1,16 +1,16 @@
-from enum import Enum
 from math_functions import *
 import numpy as np
 from matplotlib import rcParams
 import matplotlib.pyplot as plt
 
-class SimplySupportedBeam():
+
+class Beam():
 
     def __init__(self, id, L):
         self.length = L
         self.name = id
         self.load = [] # list of loads
-        self.supports = 0 #A single definition should include both supports. Assuming two supports in a simply supported beam.
+        
 
     def add_load(self, load):
         self.load.append(load)
@@ -63,12 +63,16 @@ class SimplySupportedBeam():
                 elif(x > load.end):
                     sfd -= area.subs(Symbol('x'), load.end-load.start)
 
-        support = self.supports
-        if(isinstance(support, Support)):
-            if(x >= support.position1):
-                sfd += support.reaction1
-            if(x >= support.position2):
-                sfd += support.reaction2
+        if(isinstance(self, SimplySupportedBeam)):
+            support = self.supports
+            if(isinstance(support, Support)):
+                if(x >= support.position1):
+                    sfd += support.reaction1
+                if(x >= support.position2):
+                    sfd += support.reaction2
+
+        elif(isinstance(self, CantileverBeam)):
+            sfd += self.wall_force
         
         # print(sfd)
         return sfd
@@ -78,21 +82,25 @@ class SimplySupportedBeam():
         """
         generate_sf_at_all_points is a function that generates a list of values of sfd at continuous points on the beam.
         We use the generate_sf_at_point function to generate the sfd at each point.
-        We break the beam into 1001 points and generate the shear force at each point.
+        We break the beam into 2001 points and generate the shear force at each point.
 
         Parameters:
         self (SimplySupportedBeam): The SimplySupportedBeam object.
 
         Returns:
-        x (list): A list of 1001 values of x.
-        V (list): A list of 1001 values of shear force for each value of x.
+        x (list): A list of 2001 values of x.
+        V (list): A list of 2001 values of shear force for each value of x.
         """
         # sfd = []
         N = 2001
         x = np.linspace(0,self.length,N)
 
-        # need to run the function for the support reactions as we need it already calculated in the next function.
-        self.supports.Reaction_at_support(self.load)
+        if(isinstance(self, SimplySupportedBeam)):
+            # need to run the function for the support reactions as we need it already calculated in the next function.
+            self.supports.Reaction_at_support(self.load)
+
+        elif(isinstance(self, CantileverBeam)):
+            self.wall_force = Reaction_at_point(0,self.load)
 
         sf_at_points = np.vectorize(self.generate_sf_at_point)
         V = sf_at_points(x)
@@ -129,6 +137,7 @@ class SimplySupportedBeam():
                     Equiv_point_load_mag, Equiv_point_load_dist = load.Equivalent_point_load()
                     bmd -= Equiv_point_load_mag * (x - Equiv_point_load_dist)
 
+            # alterrnative method
             # elif(isinstance(load,EquationLoad)):
             #     val = x - load.start
             #     V = load.Integral_of_eqn(load.equation, load.start, x)
@@ -138,13 +147,17 @@ class SimplySupportedBeam():
             #     elif(x > load.end):
             #         bmd -= M.subs(x, load.end-load.start)
 
+        if(isinstance(self, SimplySupportedBeam)):
+            support = self.supports
+            if(isinstance(support, Support)):
+                if(x >= support.position1):
+                    bmd += support.reaction1 * (x - support.position1)
+                if(x >= support.position2):
+                    bmd += support.reaction2 * (x - support.position2)
 
-        support = self.supports
-        if(isinstance(support, Support)):
-            if(x >= support.position1):
-                bmd += support.reaction1 * (x - support.position1)
-            if(x >= support.position2):
-                bmd += support.reaction2 * (x - support.position2)
+        elif(isinstance(self, CantileverBeam)):
+            bmd += self.wall_force * x
+            bmd += self.wall_moment
         
         return bmd
 
@@ -164,14 +177,19 @@ class SimplySupportedBeam():
         N = 1001
         x = np.linspace(0,self.length,N)
 
-        # need to run the function for the support reactions as we need it already calculated in the next function.
-        self.supports.Reaction_at_support(self.load)
+        if(isinstance(self, SimplySupportedBeam)):
+            # need to run the function for the support reactions as we need it already calculated in the next function.
+            self.supports.Reaction_at_support(self.load)
+
+        elif(isinstance(self, CantileverBeam)):
+            self.wall_force = Reaction_at_point(0,self.load)
+            self.wall_moment = -1*Moment_at_point(0,self.load)
 
         bm_at_points = np.vectorize(self.generate_bm_at_point)
         M = bm_at_points(x)
         return x, M
 
-    def get_important_points(self, x, V):
+    def get_important_points(self, x, V, shear = True):
         """
         get_important_points is a function that returns a list of important points on the beam.
         These points are the points at which the sfd is discontinuous or non-differentiable.
@@ -197,18 +215,22 @@ class SimplySupportedBeam():
                 important_points_x.append(load.start)
                 important_points_x.append(load.end)
 
-        important_points_x.append(self.supports.position1)
-        if(self.supports.position2 != None):
-            important_points_x.append(self.supports.position2)
+        if(isinstance(self, SimplySupportedBeam)):
+            important_points_x.append(self.supports.position1)
+            if(self.supports.position2 != None):
+                important_points_x.append(self.supports.position2)
+
+        elif(isinstance(self, CantileverBeam)):
+            important_points_x.append(0)
         #remove duplicates from the list
         important_points_x = list(dict.fromkeys(important_points_x))
         # print(important_points_x)
         
-
-        #find the discontinuous points so that we can make ticks for both points.
-        # np.diff returns the difference between the adjacent elements in the array.
-        # np.where returns the indices of the elements in the array that satisfy the condition.
-        # we are subtracting a small valut epsilon from the x value of the discontinuous point so that we can plot the ticks on both sides of the discontinuity.
+        ### Not necessary but do uncomment if you want to plot the discontinuous points and the ticks are already not showint it.
+        ##find the discontinuous points so that we can make ticks for both points.
+        ##np.diff returns the difference between the adjacent elements in the array.
+        ## np.where returns the indices of the elements in the array that satisfy the condition.
+        ## we are subtracting a small valut epsilon from the x value of the discontinuous point so that we can plot the ticks on both sides of the discontinuity.
         # pos = np.where(np.abs(np.diff(V)) >= 0.1)
         # for i in pos:
         #     x_discontinuous = x[i+1] - np.finfo(np.float32).eps
@@ -217,9 +239,14 @@ class SimplySupportedBeam():
         important_points_x.sort()
         
         important_points_y = []
-        for x in important_points_x:
-            important_points_y.append(self.generate_sf_at_point(x))
-            # print(self.generate_sf_at_point(x))
+        if(shear):
+            for x in important_points_x:
+                important_points_y.append(self.generate_sf_at_point(x))
+                # print(self.generate_sf_at_point(x))
+        else:
+            for x in important_points_x:
+                important_points_y.append(self.generate_bm_at_point(x))
+                # print(self.generate_bm_at_point(x))
 
         return important_points_x, important_points_y
 
@@ -331,18 +358,101 @@ class SimplySupportedBeam():
         ax2.grid(True)
         plt.show()
 
-# test the functions
-# Beam1 = SimplySupportedBeam("Beam1", 6)
-# Beam1.add_load(DistributedLoad(0, 3, 0, 4))
-# Beam1.add_load(DistributedLoad(3, 6, 4, 4))
-# Beam1.add_supports(Support(0,3))
+    def plot_sfd_and_bmd(self):
 
-# Beam1.plot_bmd()
-# Beam1.plot_sfd()
+        rcParams['font.size']=12
+        rcParams['mathtext.fontset']='cm'
+
+        x, V = self.generate_sf_at_all_points()
+        V = np.array(V, dtype=float)
+
+        fig = plt.figure()
+
+        ax1 = fig.add_axes([0.1,0.55,0.4,0.4])
+        ax2 = fig.add_axes([0.1,0.1,0.4,0.4])
+
+        ax1.plot(x,V,'blue')
+        ax1.set_xlabel(r'$x\;\; [{\rm m}]$',fontsize=20)
+        ax1.set_ylabel(r'$V\;\; [{\rm N}]$',fontsize=20)
+        ax1.axhline(y=0,color='k')
+        ax1.axvline(x=0,color='k')
+        ax1.fill_between(x,V,color='blue',alpha=0.2)
+
+        #make a list of important points
+        important_points_x, important_points_y = self.get_important_points(x, V)
+        important_points_y.append(V[-2])
+        important_points_y = np.array(important_points_y, dtype=float)
+        
+        ax1.set_yticks(important_points_y, minor=False)
+        ax1.set_xticks(important_points_x, minor=False)
+        ax1.grid(True)
         
         
+        # bmd calculation from here
+        x, M = self.generate_bm_at_all_points()
+        M = np.array(M, dtype=float)
 
+        ax2.plot(x,M)
+        ax2.set_xlabel(r'$x\;\; [{\rm m}]$',fontsize=20)
+        ax2.set_ylabel(r'$M\;\; [{\rm N}\cdot {\rm m}]$',fontsize=20)
+        ax2.axhline(y=0,color='k')
+        ax2.axvline(x=0,color='k')
+        ax2.fill_between(x,M,color='blue',alpha=0.2)
 
         
+        # replace the nan values with 0
+        M = np.nan_to_num(M)
+
+        max = np.max(M)
+        print(max)
+        # min = np.min(M)
+        maxindex = np.array(M).argmax()
+        # minindex = np.array(M).argmin()
+
+        #make a list of important points
+        important_points_x, important_points_y = self.get_important_points(x, M, False)
+
+        
+        important_points_y.append(M[-2])
+        important_points_x = np.array(important_points_x, dtype=float)
+        important_points_y = np.array(important_points_y, dtype=float)
+        # remove nan values
+        important_points_y = important_points_y[np.logical_not(np.isnan(important_points_y))]
+
+        
+        ax2.set_yticks(important_points_y, minor=False)
+        ax2.set_xticks(important_points_x, minor=False)
+
+        # ax2.set_yticks([0,-18], minor=False)
+        # ax2.set_xticks([3,6], minor=False)
+        ax2.grid(True)
+
+
+        plt.show()
+
+
+class SimplySupportedBeam(Beam):        
+
+    def __init__(self, id, L):
+        super().__init__(id, L)
+        self.supports = 0 #A single definition should all supports.
     
-        
+    def add_supports(self, supports):
+        self.supports = supports
+
+    # test the functions
+    # Beam1 = SimplySupportedBeam("Beam1", 6)
+    # Beam1.add_load(DistributedLoad(0, 3, 0, 4))
+    # Beam1.add_load(DistributedLoad(3, 6, 4, 4))
+    # Beam1.add_supports(Support(0,3))
+
+    # Beam1.plot_bmd()
+    # Beam1.plot_sfd()
+
+class CantileverBeam(Beam):
+
+    def __init__(self, id, L):
+        super().__init__(id, L)
+        # assuming wall is always at x coordinate 0
+        self.wall_force = 0         
+        self.wall_moment = 0

@@ -1,5 +1,3 @@
-import math
-from scipy.integrate import quad
 from sympy import *
 
 x=symbols('x')
@@ -51,10 +49,13 @@ class DistributedLoad:
         magnitude = self.Area_under_load(x)
 
         #Calculate the distance from the start of the distributed load to the equivalent point load (center of mass)
-        if(self.startLoad == self.Value_of_load(x)):
-            Xcom = (x - self.start) / 2
-        else:
+        # if(self.startLoad == self.Value_of_load(x)):
+        #     Xcom = (x - self.start) / 2
+        # else:
+        try:
             Xcom = (1/3 * self.startLoad + 2/3 * self.Value_of_load(x)) * (x-self.start) / (self.Value_of_load(x) + self.startLoad)
+        except ZeroDivisionError:
+            Xcom = 0
 
         distance = self.start + Xcom
 
@@ -74,6 +75,17 @@ def Moment_at_point(x, load_list):
             raise TypeError("Load must be either a point load or a distributed load")
     return moment
 
+def Reaction_at_point(x, load_list):
+    force = 0
+    for load in load_list:
+        if isinstance(load, PointLoad):
+            force += load.load
+        elif isinstance(load, DistributedLoad) or isinstance(load, EquationLoad):
+            force += load.Equivalent_point_load()[0]
+        else:
+            raise TypeError("Load must be either a point load or a distributed load")
+    return force
+
 
 class EquationLoad:
 
@@ -91,6 +103,8 @@ class EquationLoad:
         # if w0 and k are to be calculated
         w0 = Symbol('w0') # assumed to be the start load in the equationof form w0 + k*f(x)
         k = Symbol('k') # assumed to be the coeffecient to be calculated in the equation of form w0 + k*f(x)
+        L = Symbol('L') # assumed to be the length of the beam
+
         if(w0 in self.equation.free_symbols):
             self.equation=self.equation.subs(w0,startLoad)
         if(k in self.equation.free_symbols):
@@ -101,6 +115,8 @@ class EquationLoad:
             # solve for k by substuting x=end
             valOfK = solve(eqn.subs(x,end),k)
             self.equation=self.equation.subs(k,valOfK[0])
+        if(L in self.equation.free_symbols):
+            self.equation=self.equation.subs(L,end-start)   
             
     # Integration of a equation given the limits and the variable with respect to which the integration is to be done
     def Integral_of_eqn(self, eqn, start=0, end=x, withrespectto=Symbol('x')):
